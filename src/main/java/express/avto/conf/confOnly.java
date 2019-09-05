@@ -3,14 +3,12 @@ package express.avto.conf;
 public class confOnly {
 	/*
 	#Git
-	 
+	 git remote add origin git@github.com:vladimirovstanislaw/express.git
 	 git pull
 	 
 	 
-	 cd C:/Users/svladimirov/eclipse-workspace/express.avto
-	  
-	 git add . 
-	 	 
+	 cd C:/Users/svladimirov/eclipse-workspace/express.avto	  
+	 git add . 	 	 
 	 git commit -m  "first commit" 
 	 git push -u origin master
 	 
