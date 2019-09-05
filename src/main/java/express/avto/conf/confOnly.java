@@ -8,7 +8,8 @@ public class confOnly {
 	 
 	 
 	 cd C:/Users/svladimirov/eclipse-workspace/express.avto	  
-	 git add . 	 	 
+	 git add . 	 	
+	  git reset -- 'main/resources/other_credentials.json' 
 	 git commit -m  "first commit" 
 	 git push -u origin master
 	 

@@ -33,35 +33,28 @@ import com.google.api.services.gmail.model.MessagePart;
 import com.google.api.services.gmail.model.MessagePartBody;
 import com.google.api.services.gmail.model.MessagePartHeader;
 
-public class GmailQuickstart {
+public class GmailGetFiles {
 
 	private static final String APPLICATION_NAME = "Gmail API Java Quickstart";
 	private static final JsonFactory JSON_FACTORY = JacksonFactory.getDefaultInstance();
 	private static final String TOKENS_DIRECTORY_PATH = "C:/vianor_stock/tokens";
 	private static final List<String> list = new ArrayList<String>(
 			Arrays.asList(GmailScopes.GMAIL_LABELS, GmailScopes.GMAIL_READONLY, GmailScopes.GMAIL_MODIFY));
-	private final String CENTRAL_TYPE = "CENTRAL";
-	private final String OTHER_TYPE = "OTHER";
 
 	private static final List<String> SCOPES = list;
-	private static final String CREDENTIALS_FILE_PATH_OTHER_APP_BAD = "/other_app_bad.json";
-	private final String pathToSaveCentralFiles;
-	private final String pathToSaveOtherFiles;
-	private final String emailCentralProvider;
-	private final String emailOtherProvider;
-	private final String codeShini;
+	private static final String CREDENTIALS_FILE_PATH_OTHER_APP_BAD = "/other_credentials.json";
 
-	public GmailQuickstart(String pathToSaveCentralFiles, String pathToSaveOtherFiles, String emailCentralProvider,
-			String emailOtherProvider,String codeShini) {
-		this.pathToSaveCentralFiles = pathToSaveCentralFiles;
-		this.pathToSaveOtherFiles = pathToSaveOtherFiles;
-		this.emailCentralProvider = emailCentralProvider;
-		this.emailOtherProvider = emailOtherProvider;
-		this.codeShini=codeShini;
+	private final String pathToSaveFiles;
+	private final String emailProvider;
+
+	public GmailGetFiles(String pathToSaveFiles, String emailProvider) {
+
+		this.pathToSaveFiles = pathToSaveFiles;
+		this.emailProvider = emailProvider;
 	}
 
 	private static Credential getCredential(final NetHttpTransport HTTP_TRANSPORT) throws IOException {
-		InputStream in = GmailQuickstart.class.getResourceAsStream(CREDENTIALS_FILE_PATH_OTHER_APP_BAD);
+		InputStream in = GmailGetFiles.class.getResourceAsStream(CREDENTIALS_FILE_PATH_OTHER_APP_BAD);
 		if (in == null) {
 			throw new FileNotFoundException("File not found :" + CREDENTIALS_FILE_PATH_OTHER_APP_BAD);
 		}
@@ -83,60 +76,21 @@ public class GmailQuickstart {
 				.setApplicationName(APPLICATION_NAME).build();
 		String user = "me";
 
-		String queryFromCentralProvider = "from:" + emailCentralProvider;
-		String queryFromOtherProvider = "from:" + emailOtherProvider;
+		String queryFromProvider = "from:" + emailProvider;
 
-		ArrayList<Message> messageListCentral = listMessagesMatchingQuery(service, user, queryFromCentralProvider);
-		getFiles(service, user, messageListCentral, pathToSaveCentralFiles + "\\", CENTRAL_TYPE);
-		ArrayList<Message> messageListOther = listMessagesMatchingQuery(service, user, queryFromOtherProvider);
-		getFiles(service, user, messageListOther, pathToSaveOtherFiles + "\\", OTHER_TYPE);
+		ArrayList<Message> messageList = listMessagesMatchingQuery(service, user, queryFromProvider);
+		getFiles(service, user, messageList, pathToSaveFiles + "\\");
 
 	}
 
-	public void getFiles(Gmail service, String userId, ArrayList<Message> list, String pathToSaveFiles, String type)
+	public void getFiles(Gmail service, String userId, ArrayList<Message> list, String pathToSaveFiles)
 			throws IOException {
 		Message lastMessage = null;
 
-		if (type == CENTRAL_TYPE) {
-			System.out.println("Input list size = "+list.size());
-			ArrayList<Message> fullMessageList = new ArrayList<Message>();
-			ArrayList<Message> fullMessageSubjList = new ArrayList<Message>();
-			for (int i = 0; i < 5; i++) {// Можно поменять
-				Message fullLastMessage_tmp = service.users().messages().get(userId, list.get(i).getId()).execute();
-				fullMessageList.add(fullLastMessage_tmp);
-			}
-			System.out.println("fullMessageList list size = "+fullMessageList.size());
-			
-
-			
-			
-			for (Message msg : fullMessageList) {
-				List<MessagePartHeader> headerList = msg.getPayload().getHeaders();
-				for (MessagePartHeader header : headerList) {
-					if (header.getName().equals("Subject")) {
-						System.out.println("subject : "+header.getName()+"  "+header.getValue());
-						if (header.getValue().contains(this.codeShini)) {
-							System.out.println("We have some email with ШИНЫ in subject" + header.getValue());
-							fullMessageSubjList.add(msg);
-						}
-					}
-				}
-			}
-			System.out.println("fullMessageSubjList list size = "+fullMessageSubjList.size());
-			lastMessage = fullMessageSubjList.get(0);
-		}
-		if (type == OTHER_TYPE) {
-			ArrayList<Message> fullOtherMessageList = new ArrayList<Message>();
-			for (int i = 0; i < 2; i++) {// Можно поменять
-				Message fullLastMessage_tmp = service.users().messages().get(userId, list.get(i).getId()).execute();
-				fullOtherMessageList.add(fullLastMessage_tmp);
-			}
-			lastMessage = fullOtherMessageList.get(0);
-
-		}
+		lastMessage = service.users().messages().get(userId, list.get(0).getId()).execute();
 
 		if (lastMessage == null) {
-			System.out.println(type + " is null message.");
+			System.out.println("Null message.");
 		}
 		String lastMessageId = lastMessage.getId();
 
@@ -178,21 +132,6 @@ public class GmailQuickstart {
 		}
 
 		return messages;
-	}
-
-	public static void clearFolder(File folder) {
-
-		File[] files = folder.listFiles();
-		if (files != null) { // some JVMs return null for empty dirs
-			for (File f : files) {
-				if (f.isDirectory()) {
-					clearFolder(f);
-				} else {
-					f.delete();
-				}
-			}
-		}
-
 	}
 
 }

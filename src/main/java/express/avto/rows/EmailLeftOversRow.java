@@ -1,10 +1,20 @@
 package express.avto.rows;
 
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 public class EmailLeftOversRow {
 	private String id;
 	private String name;
 	private String leftOver;
 	private String price;
+	
+	private static final Pattern patternPrice = Pattern.compile("(\\,[0-9]*( )*)|(\\.[0-9]*( )*)$");
+	private static Matcher matcherPrice = null;
+	private static final String replaceWithEmptyString = "";
+	
+	private static final Pattern patternId = Pattern.compile("( )*");
+	private static Matcher matcherId = null;
 
 	public EmailLeftOversRow() {
 		super();
