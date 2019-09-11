@@ -8,11 +8,11 @@ public class EmailLeftOversRow {
 	private String name;
 	private String leftOver;
 	private String price;
-	
+
 	private static final Pattern patternPrice = Pattern.compile("(\\,[0-9]*( )*)|(\\.[0-9]*( )*)$");
 	private static Matcher matcherPrice = null;
 	private static final String replaceWithEmptyString = "";
-	
+
 	private static final Pattern patternId = Pattern.compile("( )*");
 	private static Matcher matcherId = null;
 
@@ -49,7 +49,8 @@ public class EmailLeftOversRow {
 	}
 
 	public void setLeftOver(String leftOver) {
-		this.leftOver = leftOver;
+		matcherPrice = patternPrice.matcher(leftOver);
+		this.leftOver = matcherPrice.replaceAll(replaceWithEmptyString);
 	}
 
 	public String getPrice() {
@@ -57,7 +58,8 @@ public class EmailLeftOversRow {
 	}
 
 	public void setPrice(String price) {
-		this.price = price;
+		matcherPrice = patternPrice.matcher(price);
+		this.price = matcherPrice.replaceAll(replaceWithEmptyString);
 	}
 
 	@Override

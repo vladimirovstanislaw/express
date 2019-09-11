@@ -1,0 +1,13 @@
+express\avto\sendData\Sender.class
+express\avto\parsers\OneCParser.class
+express\avto\rows\EmailLeftOversRow.class
+express\avto\conf\confOnly.class
+express\avto\conf\Runable$1.class
+express\avto\rows\OneCAllDataRow.class
+express\avto\get\data\GmailGetFiles.class
+express\avto\conf\Runable.class
+express\avto\rows\NomenclatureRow.class
+express\avto\files\Upload.class
+express\avto\files\Nomenclature.class
+express\avto\rows\AllDataRow.class
+express\avto\parsers\SAMMBParser.class
