@@ -22,12 +22,13 @@ import express.avto.rows.EmailLeftOversRow;
 import express.avto.rows.OneCAllDataRow;
 import express.avto.sendData.Sender;
 
-
 public class Runable {
 
 	public static File logFile = new File("C:\\vianor_stock\\log.txt");
 	public static final SimpleDateFormat sdf = new SimpleDateFormat("MM/dd/yyyy");
 	public static final String breakLine = "\r\n";
+	public static final String XLSX = ".xlsx";
+	public static final String XLS = ".xls";
 
 	public static void main(String[] args) throws Exception {
 		if (args.length != 0) {
@@ -38,9 +39,12 @@ public class Runable {
 			String pathToOneCFile = args[3]; // полный путь до выгрузки 1с
 			String emailSAMMBProvider = args[4]; // email SAM MB
 			String daysToDeliverySAMMB = args[5]; // days of delivery from SAM MB
+			int daysOfOneCFile = Integer.parseInt(args[6]); // сколько максимум дней может быть файлу 1с
+
+			HashMap<String, EmailLeftOversRow> samMap = null;
+			HashMap<String, OneCAllDataRow> oneCMap = null;
 
 			File folderSAMMB = new File(pathToSaveSAMMBFiles);
-
 			File oneCFile = new File(pathToOneCFile);
 
 			// проверяем, есть ли данные от 1с
@@ -49,12 +53,11 @@ public class Runable {
 				logSth("Exception: No data from 1C " + sdf.format(new Date()));
 				throw new Exception("No data from 1C");
 			}
-			if (!isFileAcceptedByTime(pathToOneCFile)) {
+			if (!isFileAcceptedByTime(pathToOneCFile, daysOfOneCFile)) {
 
 				logSth("Exception: Old Data from 1C " + sdf.format(new Date()));
 				throw new Exception("Old data from 1C");
 			}
-			
 
 			// очищаем папку сам мб
 			clearFolder(folderSAMMB);
@@ -62,7 +65,9 @@ public class Runable {
 			// скачиваем файл от сам мб
 			GmailGetFiles gmail = new GmailGetFiles(pathToSaveSAMMBFiles, emailSAMMBProvider);
 			gmail.run();
+
 			// проверяем, есть ли файл от сам мб
+
 			String lastSAMMBFile = getLastModifiedFileNameByType(folderSAMMB);
 
 			File SAMMBFile = new File(lastSAMMBFile);
@@ -71,12 +76,16 @@ public class Runable {
 				logSth("Exception: No data from SAM MB " + sdf.format(new Date()));
 				throw new Exception("No data from SAM MB");
 			}
-			HashMap<String, EmailLeftOversRow> samMap = null;
-			HashMap<String, OneCAllDataRow> oneCMap = null;
 
 			SAMMBParser samParser = SAMMBParser.getInstance();
 			samParser.setFilenameFrom(lastSAMMBFile);
-			samMap = (HashMap<String, EmailLeftOversRow>) samParser.Parse();
+
+			if (getType(SAMMBFile).equals(XLSX)) {
+				samMap = (HashMap<String, EmailLeftOversRow>) samParser.ParseXlsx();
+			}
+			if (getType(SAMMBFile).equals(XLS)) {
+				samMap = (HashMap<String, EmailLeftOversRow>) samParser.ParseXls();
+			}
 
 //			samMap.entrySet().stream().forEach(e -> {
 //				System.out
@@ -104,8 +113,7 @@ public class Runable {
 			upload.setOneCMap(oneCMap);
 			upload.configureNomenclatureMap();
 			upload.writeFile();
-			
-			
+
 			Sender sender = new Sender();
 			sender.setData(rootDirectory, fileNameUpload);
 			sender.send();
@@ -152,13 +160,27 @@ public class Runable {
 		}
 	}
 
-	public static String getLastModifiedFileNameByType(File folder) {
+	public static String getType(File file) {
+		if (file.getAbsoluteFile().toString().endsWith(XLS)) {
+			return XLS;
+		}
+		if (file.getAbsoluteFile().toString().endsWith(XLSX)) {
+			return XLSX;
+		}
+		return null;
+	}
 
-		File[] matchingFiles = folder.listFiles(new FilenameFilter() {
+	public static String getLastModifiedFileNameByType(File folder) {
+		File[] matchingFiles = null;
+
+		matchingFiles = folder.listFiles(new FilenameFilter() {
 			public boolean accept(File dir, String name) {
-				return name.endsWith(".xls");
+
+				return (name.endsWith(".xlsx") || name.endsWith(".xls"));
+
 			}
 		});
+
 		File lastFile = matchingFiles[0];
 
 		for (int i = 0; i < matchingFiles.length; i++) {
@@ -173,17 +195,17 @@ public class Runable {
 
 	}
 
-	public static boolean isFileAcceptedByTime(String fileName) {
+	public static boolean isFileAcceptedByTime(String fileName, int daysOfOneCFile) {
 
 		File file = new File(fileName);
 		Date now = new Date();
 		Date howOldIsFile = new Date(file.lastModified());
 		LocalDate dateAfter = LocalDate.of(now.getYear(), now.getMonth(), now.getDate());
 		LocalDate dateBefore = LocalDate.of(howOldIsFile.getYear(), howOldIsFile.getMonth(), howOldIsFile.getDate());
-		long between=ChronoUnit.DAYS.between(dateBefore, dateAfter);
+		long between = ChronoUnit.DAYS.between(dateBefore, dateAfter);
 		System.out.println("Last time updated OneC file - " + between + " days ago.");
-		
-		if (between <= 1) {
+
+		if (between <= daysOfOneCFile) {
 			return true;
 		}
 		return false;

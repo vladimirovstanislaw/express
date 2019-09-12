@@ -49,7 +49,94 @@ public class SAMMBParser {
 		return parser;
 	}
 
-	public Map<String, EmailLeftOversRow> Parse() throws IOException {
+	public Map<String, EmailLeftOversRow> ParseXlsx() throws IOException {
+		// Наименование index: 1
+		// Остаток index: 2
+		// Код_производителя index: 16
+		// Цена index: 23
+
+		int idCol = 16;
+		int nameCol = 1;
+		int leftOverCol = 2;
+		int priceCol = 23;
+
+		File myFile = new File(filenameFrom);
+
+		FileInputStream fis = new FileInputStream(myFile);
+
+		// Finds the workbook instance for XLSX file
+		XSSFWorkbook myWorkBook = new XSSFWorkbook(fis);
+
+		// Return first sheet from the XLSX workbook
+		XSSFSheet mySheet = myWorkBook.getSheetAt(0);
+
+		// Get iterator to all the rows in current sheet
+		Iterator<Row> rowIterator = mySheet.iterator();
+		int countAllRows = 0;
+		// Traversing over each row of XLSX file
+		String tmpMapKey = null;
+		// Traversing over each row of XLSX file
+		while (rowIterator.hasNext()) {
+			Row row = rowIterator.next();
+
+			if (row == null) {
+				continue;
+			}
+			if (row.getCell(idCol) == null) {
+				continue;
+			}
+			if (row.getCell(idCol).getCellType() == Cell.CELL_TYPE_BLANK) {
+				continue;
+			}
+			if (row.getCell(idCol).toString().equals("")) {
+				continue;
+			}
+			if (row.getCell(nameCol) == null) {
+				continue;
+			}
+			if (row.getCell(nameCol).getCellType() == Cell.CELL_TYPE_BLANK) {
+				continue;
+			}
+			if (row.getCell(nameCol).toString().equals("")) {
+				continue;
+			}
+			if (row.getCell(leftOverCol) == null) {
+				continue;
+			}
+			if (row.getCell(leftOverCol).getCellType() == Cell.CELL_TYPE_BLANK) {
+				continue;
+			}
+			if (row.getCell(leftOverCol).toString().equals("")) {
+				continue;
+			}
+			if (row.getCell(priceCol) == null) {
+				continue;
+			}
+			if (row.getCell(priceCol).getCellType() == Cell.CELL_TYPE_BLANK) {
+				continue;
+			}
+			if (row.getCell(priceCol).toString().equals("")) {
+				continue;
+			}
+
+			EmailLeftOversRow tmpRow = new EmailLeftOversRow();
+			tmpMapKey = row.getCell(idCol).toString();
+			tmpRow.setId(row.getCell(idCol).toString());
+			tmpRow.setName(row.getCell(nameCol).toString());
+			tmpRow.setLeftOver(row.getCell(leftOverCol).toString());
+			tmpRow.setPrice(row.getCell(priceCol).toString());
+
+			samMbMap.put(tmpRow.getId(), tmpRow);
+			countAllRows++;
+
+		}
+
+		System.out.println("The number of SAM MB rows = " + countAllRows);
+		myWorkBook.close();
+
+		return samMbMap;
+	}
+	public Map<String, EmailLeftOversRow> ParseXls() throws IOException {
 		// Наименование index: 1
 		// Остаток index: 2
 		// Код_производителя index: 16
@@ -136,7 +223,6 @@ public class SAMMBParser {
 
 		return samMbMap;
 	}
-
 	@Override
 	public String toString() {
 		return "OneCParser [filenameFrom=" + filenameFrom + ", asIsCentralProviderMap=" + samMbMap + "]";

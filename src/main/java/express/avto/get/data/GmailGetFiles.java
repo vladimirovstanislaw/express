@@ -100,6 +100,7 @@ public class GmailGetFiles {
 		for (MessagePart part : parts) {
 			if (part.getFilename() != null && part.getFilename().length() > 0) {
 				String filename = part.getFilename();
+				System.out.println(filename);
 				String attId = part.getBody().getAttachmentId();
 
 				MessagePartBody attachPart = service.users().messages().attachments().get(userId, lastMessageId, attId)
