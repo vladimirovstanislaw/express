@@ -3,6 +3,7 @@ express\avto\parsers\OneCParser.class
 express\avto\rows\EmailLeftOversRow.class
 express\avto\conf\confOnly.class
 express\avto\conf\Runable$1.class
+express\avto\files\UploadWithoutSamMb.class
 express\avto\rows\OneCAllDataRow.class
 express\avto\get\data\GmailGetFiles.class
 express\avto\conf\Runable.class
