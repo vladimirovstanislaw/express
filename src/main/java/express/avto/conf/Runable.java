@@ -15,6 +15,7 @@ import java.util.HashMap;
 
 import express.avto.files.Nomenclature;
 import express.avto.files.Upload;
+import express.avto.files.UploadWithoutSamMb;
 import express.avto.get.data.GmailGetFiles;
 import express.avto.parsers.OneCParser;
 import express.avto.parsers.SAMMBParser;
@@ -40,6 +41,9 @@ public class Runable {
 			String emailSAMMBProvider = args[4]; // email SAM MB
 			String daysToDeliverySAMMB = args[5]; // days of delivery from SAM MB
 			int daysOfOneCFile = Integer.parseInt(args[6]); // сколько максимум дней может быть файлу 1с
+			String leftOverWordInRussia = args[7]; // Слово "остатки", нужно потому что windows кусок говна
+			int howManyDaysCanBeEmail = Integer.parseInt(args[8]); // сколько максимум дней может быть файлу в письме
+																	// САМ МБ
 
 			HashMap<String, EmailLeftOversRow> samMap = null;
 			HashMap<String, OneCAllDataRow> oneCMap = null;
@@ -63,57 +67,73 @@ public class Runable {
 			clearFolder(folderSAMMB);
 
 			// скачиваем файл от сам мб
-			GmailGetFiles gmail = new GmailGetFiles(pathToSaveSAMMBFiles, emailSAMMBProvider);
-			gmail.run();
+			GmailGetFiles gmail = new GmailGetFiles(pathToSaveSAMMBFiles, emailSAMMBProvider, leftOverWordInRussia,
+					howManyDaysCanBeEmail);
+			// был ли сегодня файл от сам мб
+			boolean isSamMbFresh = gmail.run();
 
-			// проверяем, есть ли файл от сам мб
+			System.out.println("isSamMbFresh = " + isSamMbFresh);
+			// проверяем, есть ли файл от сам мб удовлетворяющий требованиям свежести
+			if (isSamMbFresh) {
+				System.out.println(
+						"========================================UPLOAD WITH PERM\' SAM MB LEFTOVERS========================================");
 
-			String lastSAMMBFile = getLastModifiedFileNameByType(folderSAMMB);
+				// проверяем, есть ли файл от сам мб
 
-			File SAMMBFile = new File(lastSAMMBFile);
+				String lastSAMMBFile = getLastModifiedFileNameByType(folderSAMMB);
 
-			if (!SAMMBFile.canRead()) {
-				logSth("Exception: No data from SAM MB " + sdf.format(new Date()));
-				throw new Exception("No data from SAM MB");
+				File SAMMBFile = new File(lastSAMMBFile);
+
+				if (!SAMMBFile.canRead()) {
+					logSth("Exception: No data from SAM MB " + sdf.format(new Date()));
+					throw new Exception("No data from SAM MB");
+				}
+
+				SAMMBParser samParser = SAMMBParser.getInstance();
+				samParser.setFilenameFrom(lastSAMMBFile);
+
+				if (getType(SAMMBFile).equals(XLSX)) {
+					samMap = (HashMap<String, EmailLeftOversRow>) samParser.ParseXlsx();
+				}
+				if (getType(SAMMBFile).equals(XLS)) {
+					samMap = (HashMap<String, EmailLeftOversRow>) samParser.ParseXls();
+				}
+
+				OneCParser oneCParser = OneCParser.getInstance();
+				oneCParser.setFilenameFrom(pathToOneCFile);
+				oneCMap = oneCParser.Parse();
+
+				Nomenclature nomenclature = Nomenclature.getInstanceNomenclature();
+				Date date = new Date();
+				nomenclature.setFileName(rootDirectory + "\\Nomenclature_" + date.getDate() + "_" + date.getMonth()
+						+ "_" + (date.getYear() + 1900) + ".csv");
+				nomenclature.setOneCMap(oneCMap);
+				nomenclature.setSamMap(samMap);
+				nomenclature.configureNomenclatureMap();
+				nomenclature.writeFile();
+
+				Upload upload = Upload.getInstanceUpload();
+				upload.setDayToDeliverySamMb(Integer.valueOf(daysToDeliverySAMMB));
+				upload.setFileName(rootDirectory + "\\" + fileNameUpload);
+				upload.setSamMap(samMap);
+				upload.setOneCMap(oneCMap);
+				upload.configureUploadMap();
+				upload.writeFile();
+				logSth("Upload with Perm\' SAM MB leftovers " + sdf.format(new Date()));
+			} else {
+				System.out.println(
+						"========================================UPLOAD ONLY WITH ONE_C LEFTOVERS========================================");
+				OneCParser oneCParser = OneCParser.getInstance();
+				oneCParser.setFilenameFrom(pathToOneCFile);
+				oneCMap = oneCParser.Parse();
+
+				UploadWithoutSamMb upload = UploadWithoutSamMb.getInstanceUpload();
+				upload.setFileName(rootDirectory + "\\" + fileNameUpload);
+				upload.setOneCMap(oneCMap);
+				upload.configureUploadMap();
+				upload.writeFile();
+				logSth("Upload only with OneC leftovers " + sdf.format(new Date()));
 			}
-
-			SAMMBParser samParser = SAMMBParser.getInstance();
-			samParser.setFilenameFrom(lastSAMMBFile);
-
-			if (getType(SAMMBFile).equals(XLSX)) {
-				samMap = (HashMap<String, EmailLeftOversRow>) samParser.ParseXlsx();
-			}
-			if (getType(SAMMBFile).equals(XLS)) {
-				samMap = (HashMap<String, EmailLeftOversRow>) samParser.ParseXls();
-			}
-
-//			samMap.entrySet().stream().forEach(e -> {
-//				System.out
-//						.println("id = \"" + e.getKey() + "\", Name = \"" + e.getValue().getName() + "\", LeftOver = \""
-//								+ e.getValue().getLeftOver() + "\", Price = \"" + e.getValue().getPrice());
-//			});
-
-			OneCParser oneCParser = OneCParser.getInstance();
-			oneCParser.setFilenameFrom(pathToOneCFile);
-			oneCMap = oneCParser.Parse();
-
-			Nomenclature nomenclature = Nomenclature.getInstanceNomenclature();
-			Date date = new Date();
-			nomenclature.setFileName(rootDirectory + "\\Nomenclature_" + date.getDate() + "_" + date.getMonth() + "_"
-					+ (date.getYear() + 1900) + ".csv");
-			nomenclature.setOneCMap(oneCMap);
-			nomenclature.setSamMap(samMap);
-			nomenclature.configureNomenclatureMap();
-			nomenclature.writeFile();
-
-			Upload upload = Upload.getInstanceNomenclature();
-			upload.setDayToDeliverySamMb(Integer.valueOf(daysToDeliverySAMMB));
-			upload.setFileName(rootDirectory + "\\" + fileNameUpload);
-			upload.setSamMap(samMap);
-			upload.setOneCMap(oneCMap);
-			upload.configureNomenclatureMap();
-			upload.writeFile();
-
 			Sender sender = new Sender();
 			sender.setData(rootDirectory, fileNameUpload);
 			sender.send();

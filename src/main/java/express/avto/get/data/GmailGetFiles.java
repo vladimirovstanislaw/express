@@ -7,8 +7,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.security.GeneralSecurityException;
+import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
 
 import org.apache.commons.codec.binary.Base64;
@@ -47,10 +50,16 @@ public class GmailGetFiles {
 	private final String pathToSaveFiles;
 	private final String emailProvider;
 
-	public GmailGetFiles(String pathToSaveFiles, String emailProvider) {
+	private final String leftOverWordInRussia;
+	private final int howManyDaysCanBeEmail;
+
+	public GmailGetFiles(String pathToSaveFiles, String emailProvider, String leftOverWordInRussia,
+			int howManyDaysCanBeEmail) {
 
 		this.pathToSaveFiles = pathToSaveFiles;
 		this.emailProvider = emailProvider;
+		this.leftOverWordInRussia = leftOverWordInRussia;
+		this.howManyDaysCanBeEmail = howManyDaysCanBeEmail;
 	}
 
 	private static Credential getCredential(final NetHttpTransport HTTP_TRANSPORT) throws IOException {
@@ -69,7 +78,7 @@ public class GmailGetFiles {
 
 	}
 
-	public void run() throws IOException, GeneralSecurityException {
+	public boolean run() throws IOException, GeneralSecurityException {
 
 		final NetHttpTransport HTTP_TRANSPORT = GoogleNetHttpTransport.newTrustedTransport();
 		Gmail service = new Gmail.Builder(HTTP_TRANSPORT, JSON_FACTORY, getCredential(HTTP_TRANSPORT))
@@ -79,15 +88,57 @@ public class GmailGetFiles {
 		String queryFromProvider = "from:" + emailProvider;
 
 		ArrayList<Message> messageList = listMessagesMatchingQuery(service, user, queryFromProvider);
-		getFiles(service, user, messageList, pathToSaveFiles + "\\");
+		return getFiles(service, user, messageList, pathToSaveFiles + "\\", howManyDaysCanBeEmail);
 
 	}
 
-	public void getFiles(Gmail service, String userId, ArrayList<Message> list, String pathToSaveFiles)
-			throws IOException {
+	public boolean getFiles(Gmail service, String userId, ArrayList<Message> list, String pathToSaveFiles,
+			int howManyDaysCanBeEmail) throws IOException {
 		Message lastMessage = null;
 
-		lastMessage = service.users().messages().get(userId, list.get(0).getId()).execute();
+		ArrayList<Message> fullMessageList = new ArrayList<Message>();
+
+		ArrayList<Message> fullMessageSubjList = new ArrayList<Message>();
+
+		for (int i = 0; i < list.size(); i++) {
+			Message fullLastMessage_tmp = service.users().messages().get(userId, list.get(i).getId()).execute();
+			fullMessageList.add(fullLastMessage_tmp);
+		}
+		System.out.println("fullMessageList list size = " + fullMessageList.size());
+
+		for (Message msg : fullMessageList) {
+			List<MessagePartHeader> headerList = msg.getPayload().getHeaders();
+			for (MessagePartHeader header : headerList) {
+				if (header.getName().equals("Subject")) {
+					System.out.println("subject : " + header.getName() + "  " + header.getValue());
+					if (header.getValue().contains(this.leftOverWordInRussia)) {
+						System.out.println("We have some email with \"" + leftOverWordInRussia + "\" in subject - "
+								+ header.getValue());
+						fullMessageSubjList.add(msg);
+					}
+				}
+			}
+		}
+		System.out.println("fullMessageSubjList list size = " + fullMessageSubjList.size());
+
+		//берем самый новый файл уже с нужной темой письма
+		lastMessage = fullMessageSubjList.get(0);
+
+		//проверяем, удовлетворяет ли он требованиям по свежести
+		Date now = new Date();
+		Date howOldIsEmail = new Date(lastMessage.getInternalDate());
+		LocalDate dateAfter = LocalDate.of(now.getYear(), now.getMonth(), now.getDate());
+		LocalDate dateBefore = LocalDate.of(howOldIsEmail.getYear(), howOldIsEmail.getMonth(), howOldIsEmail.getDate());
+		long between = ChronoUnit.DAYS.between(dateBefore, dateAfter);
+
+		System.out.println("Days between today and email.getDate() = " + between);
+		//если не удовлетворяет - выбрасываем false и парсим только данные 1с
+		if (between >= howManyDaysCanBeEmail) {
+			return false;
+		}
+
+		// lastMessage = service.users().messages().get(userId,
+		// list.get(0).getId()).execute();
 
 		if (lastMessage == null) {
 			System.out.println("Null message.");
@@ -113,7 +164,7 @@ public class GmailGetFiles {
 				fileOutFile.close();
 			}
 		}
-
+		return true;
 	}
 
 	public static ArrayList<Message> listMessagesMatchingQuery(Gmail service, String userId, String query)

@@ -68,25 +68,25 @@ public class Upload {
 		dayToDeliverySamMb = DEFAULT_dayToDeliverySamMb;
 	}
 
-	public static Upload getInstanceNomenclature() {
+	public static Upload getInstanceUpload() {
 		return upload;
 	}
 
-	public HashMap<String, AllDataRow> configureNomenclatureMap() throws Exception {
+	public HashMap<String, AllDataRow> configureUploadMap() throws Exception {
 
 		if (samMap != null && oneCMap != null) {
 
 			samMap.entrySet().stream().forEach(e -> {
-				AllDataRow tmpRow = new AllDataRow();
-				tmpRow.setId(e.getKey());
-				tmpRow.setPrice_one_c("0");
-				tmpRow.setLeft_over_one_c("0");
-				tmpRow.setDays_first_stock("0");
-				tmpRow.setPrice_sam_mb(e.getValue().getPrice());
-				tmpRow.setLeft_over_sam_mb(e.getValue().getLeftOver());
-				tmpRow.setDays_second_stock(String.valueOf(dayToDeliverySamMb));
+				AllDataRow tmpRowSam = new AllDataRow();
+				tmpRowSam.setId(e.getKey());
+				tmpRowSam.setPrice_one_c("");
+				tmpRowSam.setLeft_over_one_c("");
+				tmpRowSam.setDays_first_stock("");
+				tmpRowSam.setPrice_sam_mb(e.getValue().getPrice());
+				tmpRowSam.setLeft_over_sam_mb(e.getValue().getLeftOver());
+				tmpRowSam.setDays_second_stock(String.valueOf(dayToDeliverySamMb));
 
-				allDataMap.put(e.getKey(), tmpRow);
+				allDataMap.put(e.getKey(), tmpRowSam);
 			});
 			oneCMap.entrySet().stream().forEach(e -> {
 				AllDataRow tmpRow = new AllDataRow();
@@ -96,9 +96,9 @@ public class Upload {
 					tmpRow.setPrice_one_c(e.getValue().getPrice());
 					tmpRow.setLeft_over_one_c(e.getValue().getLeftOver());
 					tmpRow.setDays_first_stock("0");
-					tmpRow.setPrice_sam_mb("0");
-					tmpRow.setLeft_over_sam_mb("0");
-					tmpRow.setDays_second_stock("0");
+					tmpRow.setPrice_sam_mb("");
+					tmpRow.setLeft_over_sam_mb("");
+					tmpRow.setDays_second_stock("");
 
 					allDataMap.put(e.getKey(), tmpRow);
 					countNotContainsInSAMMap++;
@@ -135,10 +135,10 @@ public class Upload {
 					v) -> finalData += k + semilicon 
 									 + v.getPrice_one_c() + semilicon 
 									 + v.getLeft_over_one_c() + semilicon 
-									 + 0 + semilicon 
+									 + v.getDays_first_stock() + semilicon 
 									 + v.getPrice_sam_mb() + semilicon 
 									 + v.getLeft_over_sam_mb() + semilicon
-									 + dayToDeliverySamMb + n);
+									 + v.getDays_second_stock() + n);
 			FileOutputStream outputStream = new FileOutputStream(fileName);
 
 			byte[] strToBytes = finalData.getBytes();
