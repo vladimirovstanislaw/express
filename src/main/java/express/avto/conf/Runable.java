@@ -16,40 +16,49 @@ import java.util.HashMap;
 import express.avto.files.Nomenclature;
 import express.avto.files.Upload;
 import express.avto.files.UploadWithoutSamMb;
+import express.avto.get.data.ApiData;
 import express.avto.get.data.GmailGetFiles;
 import express.avto.parsers.OneCParser;
 import express.avto.parsers.SAMMBParser;
+import express.avto.rows.ApiSamMbRow;
 import express.avto.rows.EmailLeftOversRow;
 import express.avto.rows.OneCAllDataRow;
 import express.avto.sendData.Sender;
 
 public class Runable {
 
-	public static File logFile = new File("C:\\vianor_stock\\log.txt");
-	public static final SimpleDateFormat sdf = new SimpleDateFormat("MM/dd/yyyy");
-	public static final String breakLine = "\r\n";
-	public static final String XLSX = ".xlsx";
-	public static final String XLS = ".xls";
+	private static File logFile = new File("C:\\vianor_stock\\log.txt");
+	private static final SimpleDateFormat sdf = new SimpleDateFormat("MM/dd/yyyy");
+	private static final String breakLine = "\r\n";
+	private static final String XLSX = ".xlsx";
+	private static final String XLS = ".xls";
+
+	private static final String PathToNomenclature = "C:\\vianor_stock\\Nomeclature";
+
+	// "C:\vianor_stock" "Products_Vianor_239_70gg218.csv"
+	// "C:\vianor_stock\1c\Leftovers.csv" "7" "5" "1" "остатки"
+	// "https://webmim.svrauto.ru/api/v1/catalog/unload?access-token=pDEUlhnRn7bfA5FhLH6ddnjIBaeWWmO8&format=xml"
+	// "http://webmim.svrauto.ru/api/v1/catalog/unload?access-token=7a8TAw923igX2rZLFLK4-R1qTDC8weDO&format=xml"
 
 	public static void main(String[] args) throws Exception {
 		if (args.length != 0) {
 
 			String rootDirectory = args[0]; // Куда кладем .csv - выгрузку и номеклатуру
 			String fileNameUpload = args[1]; // имя отправляемого файла
-			String pathToSaveSAMMBFiles = args[2]; // куда будем класть выгрузку SAMMB
-			String pathToOneCFile = args[3]; // полный путь до выгрузки 1с
-			String emailSAMMBProvider = args[4]; // email SAM MB
-			String daysToDeliverySAMMB = args[5]; // days of delivery from SAM MB
-			int daysOfOneCFile = Integer.parseInt(args[6]); // сколько максимум дней может быть файлу 1с
-			String leftOverWordInRussia = args[7]; // Слово "остатки", нужно потому что windows кусок говна
-			int howManyDaysCanBeEmail = Integer.parseInt(args[8]); // сколько максимум дней может быть файлу в письме
-																	// САМ МБ
+			String pathToOneCFile = args[2]; // полный путь до выгрузки 1с 
+			String daysToDeliverySAMMBMsk = args[3]; // days of delivery from SAM MB Moscow 
+			String daysToDeliverySAMMBMskPerm = args[4]; // days of delivery from SAM MB Perm 
+			int daysOfOneCFile = Integer.parseInt(args[5]); // сколько максимум дней может быть файлу 1с 
+			String leftOverWordInRussia = args[6]; // Слово "остатки", нужно потому что windows кусок говна 
+			String linkAPIMsk = args[7];
+			String linkAPIPerm = args[8];
 
-			HashMap<String, EmailLeftOversRow> samMap = null;
+			HashMap<String, ApiSamMbRow> mapDataMsk = null;
+			HashMap<String, ApiSamMbRow> mapDataPerm = null;
 			HashMap<String, OneCAllDataRow> oneCMap = null;
 
-			File folderSAMMB = new File(pathToSaveSAMMBFiles);
 			File oneCFile = new File(pathToOneCFile);
+			File nomenclatureFolder = new File(PathToNomenclature);
 
 			// проверяем, есть ли данные от 1с
 			if (!oneCFile.canRead()) {
@@ -62,82 +71,88 @@ public class Runable {
 				logSth("Exception: Old Data from 1C " + sdf.format(new Date()));
 				throw new Exception("Old data from 1C");
 			}
+			// парсим данные 1с
+			OneCParser oneCParser = OneCParser.getInstance();
+			oneCParser.setFilenameFrom(pathToOneCFile);
+			oneCMap = oneCParser.Parse();
 
-			// очищаем папку сам мб
-			clearFolder(folderSAMMB);
+			// очищаем папку Nomeclature
+			clearFolder(nomenclatureFolder);
 
-			// скачиваем файл от сам мб
-			GmailGetFiles gmail = new GmailGetFiles(pathToSaveSAMMBFiles, emailSAMMBProvider, leftOverWordInRussia,
-					howManyDaysCanBeEmail);
-			// был ли сегодня файл от сам мб
-			boolean isSamMbFresh = gmail.run();
+			// получаем данные по мск
+			ApiData apiDataMsk = new ApiData();
+			apiDataMsk.setUrlString(linkAPIMsk);
+			mapDataMsk = apiDataMsk.getData();
+			System.out.println("Msk map size = " + mapDataMsk.size());
 
-			System.out.println("isSamMbFresh = " + isSamMbFresh);
-			// проверяем, есть ли файл от сам мб удовлетворяющий требованиям свежести
-			if (isSamMbFresh) {
-				System.out.println(
-						"========================================UPLOAD WITH PERM\' SAM MB LEFTOVERS========================================");
+			// получаем данные по Перми
+			ApiData apiDataPrm = new ApiData();
+			apiDataPrm.setUrlString(linkAPIPerm);
+			mapDataPerm = apiDataPrm.getData();
+			System.out.println("Perm map size = " + mapDataPerm.size());
 
-				// проверяем, есть ли файл от сам мб
-
-				String lastSAMMBFile = getLastModifiedFileNameByType(folderSAMMB);
-
-				File SAMMBFile = new File(lastSAMMBFile);
-
-				if (!SAMMBFile.canRead()) {
-					logSth("Exception: No data from SAM MB " + sdf.format(new Date()));
-					throw new Exception("No data from SAM MB");
-				}
-
-				SAMMBParser samParser = SAMMBParser.getInstance();
-				samParser.setFilenameFrom(lastSAMMBFile);
-
-				if (getType(SAMMBFile).equals(XLSX)) {
-					samMap = (HashMap<String, EmailLeftOversRow>) samParser.ParseXlsx();
-				}
-				if (getType(SAMMBFile).equals(XLS)) {
-					samMap = (HashMap<String, EmailLeftOversRow>) samParser.ParseXls();
-				}
-
-				OneCParser oneCParser = OneCParser.getInstance();
-				oneCParser.setFilenameFrom(pathToOneCFile);
-				oneCMap = oneCParser.Parse();
-
-				Nomenclature nomenclature = Nomenclature.getInstanceNomenclature();
-				Date date = new Date();
-				nomenclature.setFileName(rootDirectory + "\\Nomenclature_" + date.getDate() + "_" + date.getMonth()
-						+ "_" + (date.getYear() + 1900) + ".csv");
-				nomenclature.setOneCMap(oneCMap);
-				nomenclature.setSamMap(samMap);
-				nomenclature.configureNomenclatureMap();
-				nomenclature.writeFile();
-
-				Upload upload = Upload.getInstanceUpload();
-				upload.setDayToDeliverySamMb(Integer.valueOf(daysToDeliverySAMMB));
-				upload.setFileName(rootDirectory + "\\" + fileNameUpload);
-				upload.setSamMap(samMap);
-				upload.setOneCMap(oneCMap);
-				upload.configureUploadMap();
-				upload.writeFile();
-				logSth("Upload with Perm\' SAM MB leftovers " + sdf.format(new Date()));
-			} else {
-				System.out.println(
-						"========================================UPLOAD ONLY WITH ONE_C LEFTOVERS========================================");
-				OneCParser oneCParser = OneCParser.getInstance();
-				oneCParser.setFilenameFrom(pathToOneCFile);
-				oneCMap = oneCParser.Parse();
-
-				UploadWithoutSamMb upload = UploadWithoutSamMb.getInstanceUpload();
-				upload.setFileName(rootDirectory + "\\" + fileNameUpload);
-				upload.setOneCMap(oneCMap);
-				upload.configureUploadMap();
-				upload.writeFile();
-				logSth("Upload only with OneC leftovers " + sdf.format(new Date()));
-			}
-			Sender sender = new Sender();
-			sender.setData(rootDirectory, fileNameUpload);
-			sender.send();
-			System.out.println("Done. \u203E\\( \u25CF , \u25CF)/\u203E");
+//			// проверяем, есть ли файл от сам мб удовлетворяющий требованиям свежести
+//			if (isSamMbFresh) {
+//				System.out.println(
+//						"========================================UPLOAD WITH PERM\' SAM MB LEFTOVERS========================================");
+//
+//				// проверяем, есть ли файл от сам мб
+//
+//				String lastSAMMBFile = getLastModifiedFileNameByType(folderSAMMB);
+//
+//				File SAMMBFile = new File(lastSAMMBFile);
+//
+//				if (!SAMMBFile.canRead()) {
+//					logSth("Exception: No data from SAM MB " + sdf.format(new Date()));
+//					throw new Exception("No data from SAM MB");
+//				}
+//
+//				SAMMBParser samParser = SAMMBParser.getInstance();
+//				samParser.setFilenameFrom(lastSAMMBFile);
+//
+//				if (getType(SAMMBFile).equals(XLSX)) {
+//					samMap = (HashMap<String, EmailLeftOversRow>) samParser.ParseXlsx();
+//				}
+//				if (getType(SAMMBFile).equals(XLS)) {
+//					samMap = (HashMap<String, EmailLeftOversRow>) samParser.ParseXls();
+//				}
+//
+//				OneCParser oneCParser = OneCParser.getInstance();
+//				oneCParser.setFilenameFrom(pathToOneCFile);
+//				oneCMap = oneCParser.Parse();
+//
+//				Nomenclature nomenclature = Nomenclature.getInstanceNomenclature();
+//				Date date = new Date();
+//				nomenclature.setFileName(rootDirectory + "\\Nomenclature_" + date.getDate() + "_" + date.getMonth()
+//						+ "_" + (date.getYear() + 1900) + ".csv");
+//				nomenclature.setOneCMap(oneCMap);
+//				nomenclature.setSamMap(samMap);
+//				nomenclature.configureNomenclatureMap();
+//				nomenclature.writeFile();
+//
+//				Upload upload = Upload.getInstanceUpload();
+//				upload.setDayToDeliverySamMb(Integer.valueOf(daysToDeliverySAMMB));
+//				upload.setFileName(rootDirectory + "\\" + fileNameUpload);
+//				upload.setSamMap(samMap);
+//				upload.setOneCMap(oneCMap);
+//				upload.configureUploadMap();
+//				upload.writeFile();
+//				logSth("Upload with Perm\' SAM MB leftovers " + sdf.format(new Date()));
+//			} else {
+//				System.out.println(
+//						"========================================UPLOAD ONLY WITH ONE_C LEFTOVERS========================================");
+//
+//				UploadWithoutSamMb upload = UploadWithoutSamMb.getInstanceUpload();
+//				upload.setFileName(rootDirectory + "\\" + fileNameUpload);
+//				upload.setOneCMap(oneCMap);
+//				upload.configureUploadMap();
+//				upload.writeFile();
+//				logSth("Upload only with OneC leftovers " + sdf.format(new Date()));
+//			}
+//			Sender sender = new Sender();
+//			sender.setData(rootDirectory, fileNameUpload);
+//			sender.send();
+//			System.out.println("Done. \u203E\\( \u25CF , \u25CF)/\u203E");
 
 		} else {
 			new Exception("Не установлены параметры запуска");
