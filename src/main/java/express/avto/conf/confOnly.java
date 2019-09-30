@@ -10,7 +10,7 @@ public class confOnly {
 	 cd C:/Users/svladimirov/eclipse-workspace/express.avto	  
 	 git add .
 	 git reset -- 'main/resources/other_credentials.json'
-	 git commit -m  "Perm done commit"
+	 git commit -m  "We have all data done commit"
 	 git push -u origin master
 
 
