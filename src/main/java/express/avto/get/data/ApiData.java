@@ -6,6 +6,7 @@ import java.net.URL;
 import java.net.URLConnection;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.concurrent.Callable;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -16,7 +17,7 @@ import org.xml.sax.SAXException;
 
 import express.avto.rows.ApiSamMbRow;
 
-public class ApiData {
+public class ApiData implements Callable<HashMap<String, ApiSamMbRow>> {
 	private String urlString;
 	private HashMap<String, ApiSamMbRow> map;
 	private String typeOfData;
@@ -58,11 +59,8 @@ public class ApiData {
 			if (COMMODITIES instanceof Element) {
 				// a child element to process NAME="TYRE" ID="1" VALUE="Ўины"
 				Element elCOMMODITIES = (Element) COMMODITIES;
-//				System.out.println(elCOMMODITIES.toString());
 
 				String id = elCOMMODITIES.getAttribute("ID");
-//				String ruName = elCOMMODITIES.getAttribute("VALUE");
-//				String name = elCOMMODITIES.getAttribute("NAME");
 
 				if (id.equals("1")) {
 
@@ -72,8 +70,6 @@ public class ApiData {
 
 						Node commodity = commodityList.item(temp);
 
-//						System.out.println("\nCurrent Element :" + commodity.getNodeName());
-
 						if (commodity.getNodeType() == Node.ELEMENT_NODE) {
 
 							ApiSamMbRow tmpDataRow = new ApiSamMbRow();
@@ -81,16 +77,6 @@ public class ApiData {
 							Element elCommodity = (Element) commodity;
 
 							try {
-//								System.out.println("Full Name : "
-//										+ elCommodity.getElementsByTagName("SMODIFNAME").item(0).getTextContent());
-//								System.out.println("Code Manufacturer : "
-//										+ elCommodity.getElementsByTagName("SMNFCODE").item(0).getTextContent());
-//								System.out.println("Id SamMb : "
-//										+ elCommodity.getElementsByTagName("NNOMMODIF").item(0).getTextContent());
-//								System.out.println("Left Overs : "
-//										+ elCommodity.getElementsByTagName("NREST").item(0).getTextContent());
-//								System.out.println("Price : "
-//										+ elCommodity.getElementsByTagName("NPRICE_RRP").item(0).getTextContent());
 								String fullName = elCommodity.getElementsByTagName("SMODIFNAME").item(0)
 										.getTextContent();
 								String CodeManufacturer = elCommodity.getElementsByTagName("SMNFCODE").item(0)
@@ -111,16 +97,11 @@ public class ApiData {
 								if (Price.contains(" ")) {
 									continue;
 								}
-								tmpDataRow.setFullName(
-										elCommodity.getElementsByTagName("SMODIFNAME").item(0).getTextContent());
-								tmpDataRow.setCodeManufacturer(
-										elCommodity.getElementsByTagName("SMNFCODE").item(0).getTextContent());
-								tmpDataRow.setIdSamMb(
-										elCommodity.getElementsByTagName("NNOMMODIF").item(0).getTextContent());
-								tmpDataRow.setLeftOvers(
-										elCommodity.getElementsByTagName("NREST").item(0).getTextContent());
-								tmpDataRow.setPrice(
-										elCommodity.getElementsByTagName("NPRICE_RRP").item(0).getTextContent());
+								tmpDataRow.setFullName(fullName);
+								tmpDataRow.setCodeManufacturer(CodeManufacturer);
+								tmpDataRow.setIdSamMb(IdSamMb);
+								tmpDataRow.setLeftOvers(LeftOvers);
+								tmpDataRow.setPrice(Price);
 								map.put(tmpDataRow.getCodeManufacturer(), tmpDataRow);
 							} catch (Exception e) {
 
@@ -135,14 +116,6 @@ public class ApiData {
 		System.out.println("Done: " + date.getHours() + ":" + date.getMinutes());
 		return map;
 
-	}
-
-	public static void main(String[] args) throws IOException, ParserConfigurationException, SAXException {
-		ApiData ad = new ApiData();
-		ad.setUrlString(
-				"https://webmim.svrauto.ru/api/v1/catalog/unload?access-token=pDEUlhnRn7bfA5FhLH6ddnjIBaeWWmO8&format=xml");
-		ad.getData();
-		ad.showMeMap();
 	}
 
 	public String getUrlString() {
@@ -181,6 +154,90 @@ public class ApiData {
 	@Override
 	public String toString() {
 		return "ApiData [urlString=" + urlString + ", map=" + map + ", typeOfData=" + typeOfData + "]";
+	}
+
+	@Override
+	public HashMap<String, ApiSamMbRow> call() throws Exception {
+
+		URL url = new URL(urlString);
+		URLConnection conn = url.openConnection();
+
+		DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+		DocumentBuilder builder = factory.newDocumentBuilder();
+		Document document = builder.parse(conn.getInputStream());
+
+		document.getDocumentElement().normalize();
+
+		// получаем весь документ
+		Element rootElement = document.getDocumentElement();
+
+		// получаем root элементы COMMODITIES
+		NodeList nodesCOMMODITIES = rootElement.getChildNodes();
+
+		// проходим по всем COMMODITIES
+		for (int i = 0; i < nodesCOMMODITIES.getLength(); i++) {
+
+			Node COMMODITIES = nodesCOMMODITIES.item(i);
+
+			if (COMMODITIES instanceof Element) {
+				// a child element to process NAME="TYRE" ID="1" VALUE="Ўины"
+				Element elCOMMODITIES = (Element) COMMODITIES;
+
+				String id = elCOMMODITIES.getAttribute("ID");
+
+				if (id.equals("1")) {
+
+					NodeList commodityList = elCOMMODITIES.getElementsByTagName("COMMODITY");
+
+					for (int temp = 0; temp < commodityList.getLength(); temp++) {
+
+						Node commodity = commodityList.item(temp);
+
+						if (commodity.getNodeType() == Node.ELEMENT_NODE) {
+
+							ApiSamMbRow tmpDataRow = new ApiSamMbRow();
+
+							Element elCommodity = (Element) commodity;
+
+							try {
+								String fullName = elCommodity.getElementsByTagName("SMODIFNAME").item(0)
+										.getTextContent();
+								String CodeManufacturer = elCommodity.getElementsByTagName("SMNFCODE").item(0)
+										.getTextContent();
+								String IdSamMb = elCommodity.getElementsByTagName("NNOMMODIF").item(0).getTextContent();
+								String LeftOvers = elCommodity.getElementsByTagName("NREST").item(0).getTextContent();
+								String Price = elCommodity.getElementsByTagName("NPRICE_RRP").item(0).getTextContent();
+
+								if (CodeManufacturer.contains(" ")) {
+									continue;
+								}
+								if (IdSamMb.contains(" ")) {
+									continue;
+								}
+								if (LeftOvers.contains(" ")) {
+									continue;
+								}
+								if (Price.contains(" ")) {
+									continue;
+								}
+								tmpDataRow.setFullName(fullName);
+								tmpDataRow.setCodeManufacturer(CodeManufacturer);
+								tmpDataRow.setIdSamMb(IdSamMb);
+								tmpDataRow.setLeftOvers(LeftOvers);
+								tmpDataRow.setPrice(Price);
+								map.put(tmpDataRow.getCodeManufacturer(), tmpDataRow);
+							} catch (Exception e) {
+
+							}
+
+						}
+					}
+				}
+			}
+		}
+		Date date = new Date();
+		System.out.println("Done: " + date.getHours() + ":" + date.getMinutes());
+		return map;
 	}
 
 }

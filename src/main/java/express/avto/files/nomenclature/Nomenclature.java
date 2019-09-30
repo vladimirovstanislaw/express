@@ -1,4 +1,4 @@
-package express.avto.files;
+package express.avto.files.nomenclature;
 
 import java.io.FileOutputStream;
 import java.io.IOException;

@@ -52,7 +52,7 @@ public class OneCParser {
 			for (CSVRecord csvRecord : csvParser) {
 
 				// Accessing Values by Column Index
-				String id = csvRecord.get(0);
+				String id = csvRecord.get(0);  //это код производителя
 				String name = csvRecord.get(2);
 				String leftOver = csvRecord.get(3);
 				String price = csvRecord.get(1);
