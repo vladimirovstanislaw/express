@@ -118,6 +118,11 @@ public class Runable {
 
 				upload.configureUploadMap();
 				upload.writeFile();
+
+				Sender sender = new Sender();
+				sender.setData(rootDirectory, fileNameUpload);
+				sender.send();
+				System.out.println("Done. \u203E\\( \u25CF , \u25CF)/\u203E");
 			}
 
 			if (howMuchStocks == 2) {
