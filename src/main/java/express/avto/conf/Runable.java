@@ -357,8 +357,9 @@ public class Runable {
 		File file = new File(fileName);
 		Date now = new Date();
 		Date howOldIsFile = new Date(file.lastModified());
-		LocalDate dateAfter = LocalDate.of(now.getYear(), now.getMonth(), now.getDate());
-		LocalDate dateBefore = LocalDate.of(howOldIsFile.getYear(), howOldIsFile.getMonth(), howOldIsFile.getDate());
+		System.out.println("year - "+now.getYear()+" month - "+now.getMonth()+" date - "+ now.getDate());
+		LocalDate dateAfter = LocalDate.of(now.getYear(), now.getMonth()+1, now.getDate());
+		LocalDate dateBefore = LocalDate.of(howOldIsFile.getYear(), howOldIsFile.getMonth()+1, howOldIsFile.getDate());
 		long between = ChronoUnit.DAYS.between(dateBefore, dateAfter);
 		System.out.println("Last time updated OneC file - " + between + " days ago.");
 

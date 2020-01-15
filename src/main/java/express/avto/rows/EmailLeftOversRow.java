@@ -9,7 +9,7 @@ public class EmailLeftOversRow {
 	private String leftOver;
 	private String price;
 
-	private static final Pattern patternPrice = Pattern.compile("(\\,[0-9]*( )*)|(\\.[0-9]*( )*)$");
+	private static final Pattern patternPrice = Pattern.compile("(\\.[0-9]*( )*)$");
 	private static Matcher matcherPrice = null;
 	private static final String replaceWithEmptyString = "";
 
